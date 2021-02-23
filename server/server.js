@@ -1,35 +1,38 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const fetch = require("isomorphic-fetch");
+const axios = require("axios");
 const cors = require("cors");
+const dotenv = require('dotenv');
+
+const dotenvResult = dotenv.config({
+  path: './.env',
+});
+if (dotenvResult.error) {
+  console.error(`Error: vars() - ${dotenvResult.error.message}`);
+}
+
+const port = parseInt(process.env.PORT, 10);
 
 const app = express();
-const port = 3002;
 app.use(cors());
-const SECRETE_KEY = "6LcYTlUaAAAAAHTJCB_xU_Ks5xutmKJZvnGlcKnO";
-
-// app.use(express.static("public"));
 app.use(bodyParser.json());
-const handleSend = (req, res) => {
-  const secret_key = SECRETE_KEY;
-  const { token } = req.body;
-  console.log("acaaaaa");
-  console.log(token);
-  const url = `https://www.google.com/recaptcha/api/siteverify?secret=${secret_key}&response=${token}`;
-
-  fetch(url, {
-    method: "post",
-  })
-    .then((response) => response.json())
-    .then((google_response) => res.json({ google_response }))
-    .catch((error) => res.json({ error }));
-};
-
-app.post("/register", handleSend);
-
-app.get("/", (req, res) => {
-  console.log("aca");
-  res.json("pepe");
-});
-
+app.post(
+  "/register",
+  async (req, res) => {
+    const secret_key = process.env.RECAPTCHA_SECRET_KEY;
+    const { token } = req.body;
+    console.log(token);
+    let captchaResponse;
+    try {
+      captchaResponse = await axios({
+        url: `https://www.google.com/recaptcha/api/siteverify?secret=${secret_key}&response=${token}`,
+        method: "POST",
+      });
+    } catch (err) {
+      res.json({ err });
+      return;
+    }
+    res.json({ google_response: captchaResponse.data });
+  }
+);
 app.listen(port, () => console.log(`Listening on port ${port}!`));
